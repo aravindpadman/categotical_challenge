@@ -1,7 +1,14 @@
-import subprocess
-subprocess.run("cp /kaggle/input/rapids/rapids.0.15.0 /opt/conda/envs/rapids.tar.gz".)
+# import subprocess
+# subprocess.run("cp /kaggle/input/rapids/rapids.0.15.0 /opt/conda/envs/rapids.tar.gz".split())
+# subprocess.run("cd /opt/conda/envs/ && tar -xzvf rapids.tar.gz > /dev/null".split())
+# subprocess.run("cp /opt/conda/envs/rapids/lib/libxgboost.so /opt/conda/lib/".split())
 
 import os, sys
+
+sys.path = ["/opt/conda/envs/rapids/lib/python3.7/site-packages"] + sys.path
+sys.path = ["/opt/conda/envs/rapids/lib/python3.7"] + sys.path
+sys.path = ["/opt/conda/envs/rapids/lib"] + sys.path 
+
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
@@ -11,6 +18,9 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RandomizedSearchCV
 from config import Config
+
+import cudf
+import cuml
 
 
 np.random.seed(Config.RANDOM_SEED)
