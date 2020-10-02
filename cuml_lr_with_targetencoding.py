@@ -9,17 +9,17 @@ sys.path = ["/opt/conda/envs/rapids/lib"] + sys.path
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import StratifiedKFold
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
+
 from config import Config
 
 import cudf
 import cuml
+from cuml.preprocessing import OneHotEncoder, TargetEncoder
+from cuml.linear_model import logistic_regression
 
 
 np.random.seed(Config.RANDOM_SEED)
