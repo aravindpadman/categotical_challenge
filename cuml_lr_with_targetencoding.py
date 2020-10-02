@@ -46,7 +46,7 @@ class OHEColumnTransform(BaseEstimator, TransformerMixin):
             X_transformed = X_transformed.join(temp)
             return X_transformed
         else:
-            raise("onehot encoding must fit before")
+            raise("onehot encoding must fit before transform")
 
 
 class TargetEncodeTransform(BaseEstimator, TransformerMixin):
@@ -61,20 +61,20 @@ class TargetEncodeTransform(BaseEstimator, TransformerMixin):
         self.output_type = output_type
 
     def fit(self, X, y):
-        self.ohe = TargetEncoder(self.n_folds, self.sm)
-        self.ohe.fit(X[self.columns])
+        self.te = TargetEncoder(self.n_folds, self.smooth, self.seed, self.split_method, self.output_type)
+        self.te.fit(X[self.columns], y)
         return self
     
     def transform(self, X, y=None):
-        if self.ohe:
+        if self.te:
             X_transformed = X.copy()
-            cp_ohe = self.ohe.transform(X_transformed[self.columns])
-            temp = cudf.DataFrame(cp_ohe, index= X_transformed.index, columns = ['ohe_'+str(i) for i in range(cp_ohe.shape[1])])
+            cp_ohe = self.te.transform(X_transformed[self.columns])
+            temp = cudf.DataFrame(cp_ohe, index= X_transformed.index, columns = ['te_'+str(i) for i in range(self.columns)])
             X_transformed = X_transformed.drop(self.columns, axis=1)
             X_transformed = X_transformed.join(temp)
             return X_transformed
         else:
-            raise("onehot encoding must fit before")
+            raise("Target encoding must fit before transform")
 
 if __name__ == "__main__":
     train = cudf.read_csv("/kaggle/input/cat-in-the-dat/train.csv", index_col='id')
