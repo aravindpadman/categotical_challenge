@@ -31,8 +31,19 @@ class OHEColumnTransform(BaseEstimator, TransformerMixin):
     def __init__(self, columns, **kwargs):
         self.columns= columns
         self.kwargs = kwargs
+        self.ohe = None
     def fit(self, X, y=None):
-        pass
+        self.ohe = OneHotEncoder(**self.kwargs)
+        self.ohe.fit(X[self.columns])
+        return self
+    
+    def transform(self, X, y=None):
+        X_transformed = X.copy()
+        cp_ohe = self.ohe.transform(X_transformed[self.columns])
+        temp = cudf.DataFrame(cp_ohe, index= X_transformed.index, columns = ['ohe_'+str(i) for i in range(cp_ohe.shape[1])])
+        X_transformed = X_transformed.drop(self.columns, axis=1)
+        X_transformed.join(temp)
+        return X_transformed
 
 
 
