@@ -44,7 +44,7 @@ class OHEColumnTransform(BaseEstimator, TransformerMixin):
             temp = cudf.DataFrame(cp_ohe, index= X_transformed.index, columns = ['ohe_'+str(i) for i in range(cp_ohe.shape[1])])
             X_transformed = X_transformed.drop(self.columns, axis=1)
             X_transformed = X_transformed.join(temp)
-            return X_transformed
+            return X_transformed.reset_index(drop=True)
         else:
             raise("onehot encoding must fit before transform")
 
@@ -66,12 +66,12 @@ class TargetEncodeTransform(BaseEstimator, TransformerMixin):
     
     def transform(self, X, y=None):
         if self.te:
-            X_transformed = X.copy().reset_index(drop=True)
+            X_transformed = X.copy() # .reset_index(drop=True)
             cp_ohe = self.te.transform(X_transformed[self.columns])
             temp = cudf.DataFrame(cp_ohe, index= X_transformed.index, columns = ['targetencode_'+ "_".join(self.columns)])
             X_transformed = X_transformed.drop(self.columns, axis=1)
             X_transformed = X_transformed.join(temp)
-            return X_transformed
+            return X_transformed.reset_index(drop=True)
         else:
             raise("Target encoding must fit before transform")
     # def fit_transform(self, X, y, **fit_params):
@@ -79,8 +79,8 @@ class TargetEncodeTransform(BaseEstimator, TransformerMixin):
 
 if __name__ == "__main__":
     train = cudf.read_csv("/kaggle/input/cat-in-the-dat/train.csv", index_col=None)
-    test =  cudf.read_csv("/kaggle/input/cat-in-the-dat/test.csv", index_col='id')
-    submission = cudf.read_csv("/kaggle/input/cat-in-the-dat/sample_submission.csv", index_col='id')
+    test =  cudf.read_csv("/kaggle/input/cat-in-the-dat/test.csv", index_col=None)
+    submission = cudf.read_csv("/kaggle/input/cat-in-the-dat/sample_submission.csv", index_col=None)
 
     X = train.drop('target', axis=1)
     y = train['target']
@@ -88,10 +88,16 @@ if __name__ == "__main__":
     one_hot_columns = ['bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4', 'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4']
     pipe = make_pipeline(
         OHEColumnTransform(one_hot_columns, handle_unknown='ignore', sparse=False),
-        TargetEncodeTransform(columns=['nom_9', 'nom_8']),
+        TargetEncodeTransform(columns=['nom_5',]),
+        TargetEncodeTransform(columns=['nom_6',]),
+        TargetEncodeTransform(columns=['nom_7',]),
+        TargetEncodeTransform(columns=['nom_8',]),
+        TargetEncodeTransform(columns=['nom_9',]),
         None,
     )
     pipe = pipe.fit(X, y)
+    print(pipe)
+    print(pipe.named_steps['ohecolumntransform'].transform(X).iloc[:, :5].head())
     X_transformed = pipe.transform(X)
     print(X_transformed.head())
     print("hello")
