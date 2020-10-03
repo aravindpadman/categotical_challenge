@@ -85,7 +85,7 @@ if __name__ == "__main__":
     X = train.drop('target', axis=1)
     y = train['target']
     
-    one_hot_columns = ['bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4', 'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4']
+    one_hot_columns = ['bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4', 'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4', 'day', 'month']
     pipe = make_pipeline(
         OHEColumnTransform(one_hot_columns, handle_unknown='ignore', sparse=False),
         TargetEncodeTransform(columns=['nom_5',]),
@@ -93,11 +93,21 @@ if __name__ == "__main__":
         TargetEncodeTransform(columns=['nom_7',]),
         TargetEncodeTransform(columns=['nom_8',]),
         TargetEncodeTransform(columns=['nom_9',]),
+        TargetEncodeTransform(columns=['ord_0',]),
+        TargetEncodeTransform(columns=['ord_1',]),
+        TargetEncodeTransform(columns=['ord_2',]),
+        TargetEncodeTransform(columns=['ord_3',]),
+        TargetEncodeTransform(columns=['ord_4',]),
+        TargetEncodeTransform(columns=['ord_5',]),
         None,
     )
-    pipe = pipe.fit(X, y)
+    pipe = pipe.fit(train, y)
     print(pipe)
-    print(pipe.named_steps['ohecolumntransform'].transform(X).iloc[:, :5].head())
-    X_transformed = pipe.transform(X)
+    X_transformed = pipe.transform(train)
     print(X_transformed.head())
     print("hello")
+    if not os.path.isdir("tmp"):
+        os.mkdir("tmp")
+
+    with open('./tmp/train_transformed.csv', 'w') as file:
+        X_transformed.to_csv(file, index=False, chunksize=1000)
