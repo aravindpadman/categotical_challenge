@@ -14,17 +14,19 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 
+
 from config import Config
 
 import cudf
 import cuml
 from cuml.preprocessing import OneHotEncoder, TargetEncoder
 from cuml.linear_model import LogisticRegression
-
+from sklearn.metrics import make_scorer
+from custom_scoring_module import roc_auc_gpu
 
 np.random.seed(Config.RANDOM_SEED)
 
-
+kf = StratifiedKFold(n_splits=5, shuffle=False, random_state=Config.RANDOM_STATE)
 
 #  categories='auto', drop=None, sparse=True, dtype='float32', handle_unknown='error'
 class OHEColumnTransform(BaseEstimator, TransformerMixin):
@@ -85,7 +87,11 @@ if __name__ == "__main__":
     X = train.drop('target', axis=1)
     y = train['target']
     
-    one_hot_columns = ['bin_0', 'bin_1', 'bin_2', 'bin_3', 'bin_4', 'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4', 'day', 'month']
+    one_hot_columns = ['bin_0', 'bin_1', 'bin_2', 'bin_3',
+        'bin_4', 'nom_0', 'nom_1', 'nom_2', 'nom_3', 'nom_4', 'day', 'month',
+        'ord_0', 'ord_1', 'ord_2', 'ord_3', 'ord_4', 'ord_5',
+     ]
+    
     pipe = make_pipeline(
         OHEColumnTransform(one_hot_columns, handle_unknown='ignore', sparse=False),
         TargetEncodeTransform(columns=['nom_5',]),
@@ -93,21 +99,38 @@ if __name__ == "__main__":
         TargetEncodeTransform(columns=['nom_7',]),
         TargetEncodeTransform(columns=['nom_8',]),
         TargetEncodeTransform(columns=['nom_9',]),
-        TargetEncodeTransform(columns=['ord_0',]),
-        TargetEncodeTransform(columns=['ord_1',]),
-        TargetEncodeTransform(columns=['ord_2',]),
-        TargetEncodeTransform(columns=['ord_3',]),
-        TargetEncodeTransform(columns=['ord_4',]),
-        TargetEncodeTransform(columns=['ord_5',]),
-        None,
+        # TargetEncodeTransform(columns=['ord_0',]),
+        # TargetEncodeTransform(columns=['ord_1',]),
+        # TargetEncodeTransform(columns=['ord_2',]),
+        # TargetEncodeTransform(columns=['ord_3',]),
+        # TargetEncodeTransform(columns=['ord_4',]),
+        # TargetEncodeTransform(columns=['ord_5',]),
+        LogisticRegression(),
     )
-    pipe = pipe.fit(train, y)
-    print(pipe)
-    X_transformed = pipe.transform(train)
-    print(X_transformed.head())
-    print("hello")
-    if not os.path.isdir("tmp"):
-        os.mkdir("tmp")
 
-    with open('./tmp/train_transformed.csv', 'w') as file:
-        X_transformed.to_csv(file, index=False, chunksize=1000)
+    rscv = RandomizedSearchCV(pipe, param_distributions=param_grid,
+                                 scoring=make_scorer(roc_auc_gpu,  greater_is_better=True),
+                                  cv=kf, verbose=6,  random_state=Config.RANDOM_STATE, n_iter=1)
+    model = rscv.fit(X, y)
+
+
+
+
+
+
+
+
+
+
+
+
+
+    print(pipe)
+    # X_transformed = pipe.transform(train)
+    # print(X_transformed.head())
+    # print("hello")
+    # if not os.path.isdir("tmp"):
+    #     os.mkdir("tmp")
+
+    # with open('./tmp/train_transformed.csv', 'w') as file:
+    #     X_transformed.to_csv(file, index=False, chunksize=1000)
