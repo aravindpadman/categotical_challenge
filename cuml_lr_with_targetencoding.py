@@ -28,6 +28,14 @@ np.random.seed(Config.RANDOM_SEED)
 
 kf = StratifiedKFold(n_splits=5, shuffle=False, random_state=Config.RANDOM_STATE)
 
+class ToCudfTransform(BaseEstimator, TransformerMixin):
+    def fit(self, X, y):
+        return self
+    def transform(self, X):
+        if isinstance(X, pd.DataFrame):
+            X = cudf.from_pandas(X)
+        return X
+
 #  categories='auto', drop=None, sparse=True, dtype='float32', handle_unknown='error'
 class OHEColumnTransform(BaseEstimator, TransformerMixin):
     def __init__(self, columns, **kwargs):
@@ -62,6 +70,8 @@ class TargetEncodeTransform(BaseEstimator, TransformerMixin):
         self.output_type = output_type
 
     def fit(self, X, y):
+        if isinstance(y, pd.DataFrame) or isinstance(y, pd.Series):
+            y = cudf.from_pandas(y)
         self.te = TargetEncoder(self.n_folds, self.smooth, self.seed, self.split_method, self.output_type)
         self.te.fit(X[self.columns], y)
         return self
@@ -80,7 +90,7 @@ class TargetEncodeTransform(BaseEstimator, TransformerMixin):
     #     return self.fit(X, y).transform(X)
 
 if __name__ == "__main__":
-    train = cudf.read_csv("/kaggle/input/cat-in-the-dat/train.csv", index_col=None)
+    train = pd.read_csv("/kaggle/input/cat-in-the-dat/train.csv", index_col=None)
     test =  cudf.read_csv("/kaggle/input/cat-in-the-dat/test.csv", index_col=None)
     submission = cudf.read_csv("/kaggle/input/cat-in-the-dat/sample_submission.csv", index_col=None)
 
@@ -93,6 +103,7 @@ if __name__ == "__main__":
      ]
     
     pipe = make_pipeline(
+        ToCudfTransform(),
         OHEColumnTransform(one_hot_columns, handle_unknown='ignore', sparse=False),
         TargetEncodeTransform(columns=['nom_5',]),
         TargetEncodeTransform(columns=['nom_6',]),
@@ -107,7 +118,9 @@ if __name__ == "__main__":
         # TargetEncodeTransform(columns=['ord_5',]),
         LogisticRegression(),
     )
-
+    pipe.fit(X, y)
+    y_pred = pipe.predict(X)
+    param_grid = {"logisticregression__C": [1,2,3,4,5,6]}
     rscv = RandomizedSearchCV(pipe, param_distributions=param_grid,
                                  scoring=make_scorer(roc_auc_gpu,  greater_is_better=True),
                                   cv=kf, verbose=6,  random_state=Config.RANDOM_STATE, n_iter=1)
